@@ -17,6 +17,9 @@ class Personality:
         self.last_motion_time = datetime.now()
         self.last_vision_time = None
         self.next_action_time = self.calculate_next_action_time()
+        
+        # Initialize status LED colors (default to 'off')
+        self.led_colors = ['off'] * 5
 
         pub.subscribe(self.loop, 'loop:1')
         pub.subscribe(self.handle_vision_detections, 'vision:detections')
@@ -25,7 +28,6 @@ class Personality:
         # Define possible actions
         self.actions = [
             self.braillespeak,
-            self.random_neopixel_status,
             self.random_neopixel_eye,
             self.move_antenna
         ]
@@ -41,6 +43,8 @@ class Personality:
 
         # Update the middle eye LED based on conditions
         self.update_middle_eye_led()
+        
+        self.random_neopixel_status()
 
         # Check if it's time for the next action
         if datetime.now() >= self.next_action_time:
@@ -77,10 +81,15 @@ class Personality:
 
     # Neopixels: Toggles random status LEDs
     def random_neopixel_status(self):
-        status_led = f"status{randint(1, 5)}"
-        color = choice(["red", "green", "blue", "off"])
-        pub.sendMessage('led', identifiers=[status_led], color=color)
-        pub.sendMessage('log', msg=f"[Personality] Neopixel status triggered: {status_led} set to {color}")
+        color = choice(["red", "green", "blue", "white_dim", "purple", "yellow", "orange", "pink", "off"])
+        pub.sendMessage('led', identifiers=[0], color=color)
+        for i in range(4, 0, -1):
+            if i+1 < 5:
+                self.led_colors[i] = self.led_colors[i-1]
+        for i in range(1, 5):
+            pub.sendMessage('led', identifiers=[i], color=self.led_colors[i])
+        self.led_colors[0] = color
+        pub.sendMessage('log', msg=f"[Personality] Neopixel status triggered set to {color}")
 
     # Neopixels: Toggles random eye LEDs
     def random_neopixel_eye(self):

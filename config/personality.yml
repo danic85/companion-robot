@@ -2,5 +2,5 @@ personality:
   enabled: true
   path: modules.personality.Personality
   config:
-    min_interval: 2
-    max_interval: 6
+    min_interval: 20
+    max_interval: 60
