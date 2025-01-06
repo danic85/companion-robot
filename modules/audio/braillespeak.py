@@ -74,3 +74,4 @@ class BrailleSpeak:
         if msg:
             for t in msg.lower():
                 self.handle_char(t)
+            pub.sendMessage('buzzer:close')

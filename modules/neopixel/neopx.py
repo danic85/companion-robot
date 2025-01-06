@@ -10,6 +10,9 @@ class NeoPx:
     COLOR_RED = (100, 0, 0)
     COLOR_GREEN = (0, 100, 0)
     COLOR_BLUE = (0, 0, 100)
+    COLOR_YELLOW = (100, 100, 0)
+    COLOR_ORANGE = (100, 50, 0)
+    COLOR_PINK = (100, 0, 50)
     COLOR_PURPLE = (100, 0, 100)
     COLOR_WHITE = (100, 100, 100)
     COLOR_WHITE_FULL = (255, 255, 255)
@@ -23,6 +26,9 @@ class NeoPx:
         'green': COLOR_GREEN,
         'blue': COLOR_BLUE,
         'purple': COLOR_PURPLE,
+        'yellow': COLOR_YELLOW,
+        'orange': COLOR_ORANGE,
+        'pink': COLOR_PINK,
         'white': COLOR_WHITE,
         'white_full': COLOR_WHITE_FULL,
         'off': COLOR_OFF,

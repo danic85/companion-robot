@@ -1,125 +1,123 @@
-from random import randint
-from time import sleep, localtime
+from random import choice, randint
 from pubsub import pub
 from datetime import datetime, timedelta
 
 from modules.config import Config
 
-from modules.behaviours.dream import Dream
-from modules.behaviours.faces import Faces
-from modules.behaviours.motion import Motion
-from modules.behaviours.boredom import Boredom
-from modules.behaviours.feel import Feel
-from modules.behaviours.sleep import Sleep
-from modules.behaviours.respond import Respond
-from modules.behaviours.objects import Objects
-from modules.behaviours.sentiment import Sentiment
-
-from types import SimpleNamespace
-
-"""
-This class dictates the behaviour of the robot, subscribing to various input events (face matches or motion)
-and triggering animations as a result of those behaviours (or lack of) 
-
-It also stores the current 'state of mind' of the robot, so that we can simulate boredom and other emotions based
-on the above stimulus.
-
-To update the personality status from another module, publish to the 'behaviour' topic one of the defined INPUT_TYPE constants:
-from pubsub import pub
-pub.sendMessage('behaviour', type=Personality.INPUT_TYPE_FUN)
-"""
-
 class Personality:
 
-
     def __init__(self, **kwargs):
-        self.mode = kwargs.get('mode', Config.MODE_LIVE)
-        self.state = Config.STATE_SLEEPING
         self.eye = 'blue'
+        self.object_reaction_end_time = None
+
+        # Configurable interval range
+        self.min_interval = kwargs.get('min_interval', 20)  # Default minimum 20 seconds
+        self.max_interval = kwargs.get('max_interval', 60)  # Default maximum 60 seconds
+
+        self.last_motion_time = datetime.now()
+        self.last_vision_time = None
+        self.next_action_time = self.calculate_next_action_time()
 
         pub.subscribe(self.loop, 'loop:1')
-        pub.subscribe(self.process_sentiment, 'sentiment')
-        
-        behaviours = { 'boredom': Boredom(self),
-                       'dream': Dream(self),
-                       'faces': Faces(self),
-                       'motion': Motion(self),
-                       'sleep': Sleep(self),
-                       'feel': Feel(self),
-                       'objects': Objects(self),
-                       'respond': Respond(self),
-                       'sentiment': Sentiment(self)}
+        pub.subscribe(self.handle_vision_detections, 'vision:detections')
+        pub.subscribe(self.update_motion_time, 'motion')
 
-        self.behaviours = SimpleNamespace(**behaviours)
+        # Define possible actions
+        self.actions = [
+            self.braillespeak,
+            self.random_neopixel_status,
+            self.random_neopixel_eye,
+            self.move_antenna
+        ]
 
     def loop(self):
-        # pub.sendMessage('speech', text="Hello, I am happy") # for testing sentiment responses
-        if not self.is_asleep() and not self.behaviours.faces.face_detected and not self.behaviours.motion.is_motion() and not self.behaviours.objects.is_detected:
-            self.set_eye('red')
+        # Handle ongoing object reaction
+        if self.object_reaction_end_time and datetime.now() >= self.object_reaction_end_time:
+            pub.sendMessage('led', identifiers=[
+                'right', 'top_right', 'top_left', 'left', 
+                'bottom_left', 'bottom_right'
+            ], color="off")
+            self.object_reaction_end_time = None
 
-        if self.state == Config.STATE_ALERT and self.lt(self.behaviours.faces.last_face, self.past(2*60)) and self.lt(self.behaviours.objects.last_detection, self.past(2*60)):
-            # reset to idle position after 2 minutes inactivity
-            pub.sendMessage('animate', action="wake")
-            self.set_state(Config.STATE_IDLE)
+        # Update the middle eye LED based on conditions
+        self.update_middle_eye_led()
 
-    def process_sentiment(self, score):
-        pub.sendMessage('log', msg="[Personality] Sentiment: " + str(score))
-        if score > 0:
-            pub.sendMessage('piservo:move', angle=0)
+        # Check if it's time for the next action
+        if datetime.now() >= self.next_action_time:
+            if not self.object_reaction_end_time:
+                action = choice(self.actions)
+                action()
+            self.next_action_time = self.calculate_next_action_time()
+
+    # Calculate the next action time
+    def calculate_next_action_time(self):
+        interval = randint(self.min_interval, self.max_interval)  # Use configurable interval range
+        return datetime.now() + timedelta(seconds=interval)
+
+    # Braillespeak: Outputs short messages as tones
+    def braillespeak(self):
+        messages = ["Hi", "Hello", "Hai", "Hey"]
+        msg = choice(messages)
+        pub.sendMessage('speak', msg=msg)
+        pub.sendMessage('log', msg=f"[Personality] Braillespeak triggered: {msg}")
+
+    # Buzzer: Outputs a specific tone
+    def buzzer_tone(self):
+        frequency = randint(300, 1000)  # Random frequency between 300Hz and 1000Hz
+        length = round(randint(1, 5) / 10, 1)  # Random length between 0.1s and 0.5s
+        pub.sendMessage('buzz', frequency=frequency, length=length)
+        pub.sendMessage('log', msg=f"[Personality] Buzzer tone triggered: {frequency}Hz for {length}s")
+
+    # Buzzer: Plays one of two predefined tunes
+    def buzzer_song(self):
+        songs = ["happy birthday", "merry christmas"]
+        song = choice(songs)
+        pub.sendMessage('play', song=song)
+        pub.sendMessage('log', msg=f"[Personality] Buzzer song triggered: {song}")
+
+    # Neopixels: Toggles random status LEDs
+    def random_neopixel_status(self):
+        status_led = f"status{randint(1, 5)}"
+        color = choice(["red", "green", "blue", "off"])
+        pub.sendMessage('led', identifiers=[status_led], color=color)
+        pub.sendMessage('log', msg=f"[Personality] Neopixel status triggered: {status_led} set to {color}")
+
+    # Neopixels: Toggles random eye LEDs
+    def random_neopixel_eye(self):
+        positions = [
+            'right', 'top_right', 'top_left', 'left', 
+            'bottom_left', 'bottom_right'
+        ]
+        position = choice(positions)
+        color = choice(["white_dim"])
+        pub.sendMessage('led', identifiers=positions, color=color)
+        pub.sendMessage('log', msg=f"[Personality] Neopixel eye triggered: {position} set to {color}")
+
+    # Antenna: Moves to a random angle between -40 and 40 degrees
+    def move_antenna(self):
+        angle = randint(-40, 40)
+        pub.sendMessage('piservo:move', angle=angle)
+        pub.sendMessage('log', msg=f"[Personality] Antenna moved to angle: {angle}")
+
+    # Vision: Handles detected objects
+    def handle_vision_detections(self, matches):
+        if matches:
+            pub.sendMessage('log', msg=f"[Personality] Vision detected objects: {matches}")
+            self.last_vision_time = datetime.now()
+            # Trigger temporary reaction for detected objects
+            self.random_neopixel_eye()
+            self.object_reaction_end_time = datetime.now() + timedelta(seconds=1)
+
+    # Motion: Updates the last motion time
+    def update_motion_time(self):
+        self.last_motion_time = datetime.now()
+
+    # Updates the middle eye LED based on the current state
+    def update_middle_eye_led(self):
+        now = datetime.now()
+        if self.last_vision_time and now - self.last_vision_time <= timedelta(seconds=30):
+            pub.sendMessage('led', identifiers='middle', color='green')
+        elif now - self.last_motion_time > timedelta(seconds=30):
+            pub.sendMessage('led', identifiers='middle', color='red')
         else:
-            pub.sendMessage('piservo:move', angle=40)
-        
-    def set_eye(self, color):
-        if self.eye == color:
-            return
-        # pub.sendMessage('led', identifiers=['left', 'right'], color='off')
-        pub.sendMessage('led:eye', color=color)
-        self.eye = color
-
-    def set_state(self, state):
-        if self.state == state:
-            return
-
-        pub.sendMessage('log', msg="[Personality] State: " + str(state))
-        if state == Config.STATE_SLEEPING:
-            pub.sendMessage("sleep")
-            pub.sendMessage("animate", action="sleep")
-            pub.sendMessage("animate", action="sit")
-            pub.sendMessage("led:off")
-            pub.sendMessage("led", identifiers=['status1'], color="off")
-            pub.sendMessage('piservo:move', angle=0)
-        elif state == Config.STATE_RESTING:
-            pub.sendMessage('rest')
-            pub.sendMessage("animate", action="sit")
-            pub.sendMessage("animate", action="sleep")
-            self.set_eye('blue')
-            pub.sendMessage("led", identifiers=['status1'], color="red")
-            pub.sendMessage('piservo:move', angle=-40)
-        elif state == Config.STATE_IDLE:
-            if self.state == Config.STATE_RESTING or self.state == Config.STATE_SLEEPING:
-                pub.sendMessage('wake')
-                pub.sendMessage('animate', action="wake")
-            pub.sendMessage('animate', action="sit")
-            pub.sendMessage("led", identifiers=['status1'], color="green")
-            pub.sendMessage('piservo:move', angle=-20)
-            self.set_eye('blue')
-        elif state == Config.STATE_ALERT:
-            if self.state == Config.STATE_RESTING or self.state == Config.STATE_SLEEPING:
-                pub.sendMessage('wake')
-                pub.sendMessage('animate', action="wake")
-            # pub.sendMessage('animate', action="stand")
-            pub.sendMessage('piservo:move', angle=0)
-            pub.sendMessage("led", identifiers=['status1'], color="blue")
-        self.state = state
-
-    def is_asleep(self):
-        return self.state == Config.STATE_SLEEPING
-
-    def is_resting(self):
-        return self.state == Config.STATE_SLEEPING or self.state == Config.STATE_RESTING
-
-    def lt(self, date, compare):
-        return date is None or date < compare
-
-    def past(self, seconds):
-        return datetime.now() - timedelta(seconds=seconds)
+            pub.sendMessage('led', identifiers='middle', color='blue')

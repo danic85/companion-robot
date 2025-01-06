@@ -1,5 +1,5 @@
 braillespeak:
-  enabled: false
+  enabled: true
   path: modules.audio.braillespeak.BrailleSpeak
   config:
     pin: 27

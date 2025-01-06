@@ -1,5 +1,5 @@
 tracking:
-  enabled: false
+  enabled: true
   path: 'modules.vision.imx500.tracking.Tracking'
   config:
     active: True

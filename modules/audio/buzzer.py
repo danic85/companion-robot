@@ -24,10 +24,14 @@ class Buzzer:
         
         """
         self.pin = kwargs.get('pin')
-        self.buzzer = TonalBuzzer(self.pin)
+        self.buzzer = None
 
         pub.subscribe(self.play_song, 'play')
         pub.subscribe(self.buzz, 'buzz')
+        pub.subscribe(self.cleanup, 'buzzer:close')
+        
+    def cleanup(self):
+        self.buzzer.close()
         
     def buzz(self, frequency, length):
         """
@@ -35,6 +39,9 @@ class Buzzer:
         :param frequency: Frequency of the buzz
         :param length: Length of the buzz
         """
+        if self.buzzer is None or self.buzzer.closed:
+            self.buzzer = TonalBuzzer(self.pin)
+        print(self.buzzer)
         if (frequency == 0):
             time.sleep(length)
             return
