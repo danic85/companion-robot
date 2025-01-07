@@ -17,6 +17,8 @@ class Personality:
         self.last_motion_time = datetime.now()
         self.last_vision_time = None
         self.next_action_time = self.calculate_next_action_time()
+        self.last_status_time = None
+        self.last_serial_time = None
         
         # Initialize status LED colors (default to 'off')
         self.led_colors = ['off'] * 5
@@ -24,6 +26,7 @@ class Personality:
         pub.subscribe(self.loop, 'loop:1')
         pub.subscribe(self.handle_vision_detections, 'vision:detections')
         pub.subscribe(self.update_motion_time, 'motion')
+        pub.subscribe(self.track_serial_idle, 'serial')
 
         # Define possible actions
         self.actions = [
@@ -48,10 +51,27 @@ class Personality:
 
         # Check if it's time for the next action
         if datetime.now() >= self.next_action_time:
-            if not self.object_reaction_end_time:
-                action = choice(self.actions)
-                action()
+            action = choice(self.actions)
+            action()
             self.next_action_time = self.calculate_next_action_time()
+        
+        # If serial has been idle for more than 10 seconds, call random_animation()
+        if self.last_serial_time and datetime.now() - self.last_serial_time > timedelta(seconds=10):
+            self.random_animation()
+            
+    def random_animation(self):
+        
+        animations = [
+            'head_shake',
+            'head_left',
+            'head_right',
+            'wake',
+            'look_down',
+            'look_up'
+        ]
+        animation = choice(animations)
+        pub.sendMessage('log', msg=f"[Personality] Random animation triggered: {animation}")
+        pub.sendMessage('animate', action=animation)
 
     # Calculate the next action time
     def calculate_next_action_time(self):
@@ -81,15 +101,17 @@ class Personality:
 
     # Neopixels: Toggles random status LEDs
     def random_neopixel_status(self):
-        color = choice(["red", "green", "blue", "white_dim", "purple", "yellow", "orange", "pink", "off"])
-        pub.sendMessage('led', identifiers=[0], color=color)
-        for i in range(4, 0, -1):
-            if i+1 < 5:
-                self.led_colors[i] = self.led_colors[i-1]
-        for i in range(1, 5):
-            pub.sendMessage('led', identifiers=[i], color=self.led_colors[i])
-        self.led_colors[0] = color
-        pub.sendMessage('log', msg=f"[Personality] Neopixel status triggered set to {color}")
+        if not self.last_status_time or datetime.now() - self.last_status_time > timedelta(seconds=3):
+            self.last_status_time = datetime.now()
+            color = choice(["red", "green", "blue", "white_dim", "purple", "yellow", "orange", "pink", "off"])
+            pub.sendMessage('led', identifiers=[0], color=color)
+            for i in range(4, 0, -1):
+                if i+1 < 5:
+                    self.led_colors[i] = self.led_colors[i-1]
+            for i in range(1, 5):
+                pub.sendMessage('led', identifiers=[i], color=self.led_colors[i])
+            self.led_colors[0] = color
+            pub.sendMessage('log', msg=f"[Personality] Neopixel status triggered set to {color}")
 
     # Neopixels: Toggles random eye LEDs
     def random_neopixel_eye(self):
@@ -100,7 +122,7 @@ class Personality:
         position = choice(positions)
         color = choice(["white_dim"])
         pub.sendMessage('led', identifiers=positions, color=color)
-        pub.sendMessage('log', msg=f"[Personality] Neopixel eye triggered: {position} set to {color}")
+        pub.sendMessage('log', msg=f"[Personality] Neopixel eye ring set to {color}")
 
     # Antenna: Moves to a random angle between -40 and 40 degrees
     def move_antenna(self):
@@ -110,12 +132,13 @@ class Personality:
 
     # Vision: Handles detected objects
     def handle_vision_detections(self, matches):
-        if matches:
+        # if there are matches and the object reaction end time is in the past
+        if matches and len(matches) > 0 and (self.object_reaction_end_time is None or datetime.now() >= self.object_reaction_end_time):
             pub.sendMessage('log', msg=f"[Personality] Vision detected objects: {matches}")
             self.last_vision_time = datetime.now()
             # Trigger temporary reaction for detected objects
             self.random_neopixel_eye()
-            self.object_reaction_end_time = datetime.now() + timedelta(seconds=1)
+            self.object_reaction_end_time = datetime.now() + timedelta(seconds=3)
 
     # Motion: Updates the last motion time
     def update_motion_time(self):
@@ -130,3 +153,6 @@ class Personality:
             pub.sendMessage('led', identifiers='middle', color='red')
         else:
             pub.sendMessage('led', identifiers='middle', color='blue')
+
+    def track_serial_idle(self, type, identifier, message):
+        self.last_serial_time = datetime.now()

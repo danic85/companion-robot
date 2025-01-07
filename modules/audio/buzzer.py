@@ -41,7 +41,6 @@ class Buzzer:
         """
         if self.buzzer is None or self.buzzer.closed:
             self.buzzer = TonalBuzzer(self.pin)
-        print(self.buzzer)
         if (frequency == 0):
             time.sleep(length)
             return
