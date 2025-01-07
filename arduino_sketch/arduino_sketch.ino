@@ -77,6 +77,8 @@ void setup()
   // Move to rest position + calculate IK and store as rest position
   // doRest();
 
+  servoManager.moveServos(PosStand); // Stand once
+
   // Custom log message (enable DEBUG in Config.h to see this)
   cLog("Start loop");
 }
@@ -237,10 +239,10 @@ void animateRandomly()
   float headTiltOffset = ServoEasing::ServoEasingNextPositionArray[7] - 90;
   // Attempt to compensate movement of head by adjusting leg height
   // Scale headTiltOffset value between 0 and 180 (inverted) to scale of LEG_IK_MIN and LEG_IK_MAX
-  float legHeight = map(headTiltOffset, 180, 0, LEG_IK_MIN, LEG_IK_MAX);
+  // float legHeight = map(headTiltOffset, 180, 0, LEG_IK_MIN, LEG_IK_MAX);
   // Move legs to that height
   // servoManager.moveLegs(LEG_IK_MAX, 0);
-  servoManager.moveServos(PosStand);
+  // servoManager.moveServos(PosStand);
   shouldMove = true;
 #ifdef DEBUG
   Serial.print("Moving legs ");
