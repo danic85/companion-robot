@@ -34,7 +34,7 @@
 
 #define EASING_TYPE EASE_QUADRATIC_IN_OUT
 #define ENABLE_EASE_QUADRATIC
-#define SERVO_SPEED_MIN 20
+#define SERVO_SPEED_MIN 30 // Was 20
 #define SERVO_SPEED_MAX 80
 
 // #define DEBUG
@@ -70,7 +70,7 @@ int PosRest[SERVO_COUNT] = {60, 0, 165, 120, 180, 20, 90, 90};
 int PosConfig[SERVO_COUNT] = {90, 90, 90, 90, 90, 90, 90, 90};
 
 // Poses
-int PosStand[SERVO_COUNT] = {45, 75, 80, 135, 105, 100, NOVAL, NOVAL};
+int PosStand[SERVO_COUNT] = {45, 70, 80, 135, 110, 100, NOVAL, NOVAL};
 int PosLookLeft[SERVO_COUNT] = {NOVAL, NOVAL, NOVAL, NOVAL, NOVAL, NOVAL, NOVAL, 180};
 int PosLookRight[SERVO_COUNT] = {NOVAL, NOVAL, NOVAL, NOVAL, NOVAL,  NOVAL, NOVAL, 0};
 int PosLookRandom[SERVO_COUNT] = {NOVAL, NOVAL, NOVAL, NOVAL, NOVAL, NOVAL, -1, -1}; // Made random by calling the function moveRandom() if the value is -1

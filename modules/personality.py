@@ -31,8 +31,10 @@ class Personality:
         # Define possible actions
         self.actions = [
             self.braillespeak,
-            self.random_neopixel_eye,
-            self.move_antenna
+            self.move_antenna,
+            self.move_antenna,
+            self.move_antenna,
+            self.move_antenna,
         ]
 
     def loop(self):
@@ -60,14 +62,14 @@ class Personality:
             self.random_animation()
             
     def random_animation(self):
-        
         animations = [
             'head_shake',
             'head_left',
             'head_right',
             'wake',
             'look_down',
-            'look_up'
+            'look_up',
+            'celebrate'
         ]
         animation = choice(animations)
         pub.sendMessage('log', msg=f"[Personality] Random animation triggered: {animation}")

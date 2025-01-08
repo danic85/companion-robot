@@ -1,9 +1,7 @@
 [
   {"animate": "wake"},
-  {"animate": "stand"},
   {"sleep": 0.5},
   {"servo:tilt:mv": -20},
-  {"led:party": "off"},
   {"servo:pan:mv": -10},
   {"sleep": 0.5},
   {"servo:pan:mv": 20},
